@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卡路里 & 三大營養素精算神器 Ultimate Pro</title>
+
+  <!-- Vercel Web Analytics 流量統計追蹤碼 -->
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/analytics/script.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>🥗 卡路里 & 營養素精算 Pro</h1>
+      <div class="subtitle">三大營養素・餐次分類・TDEE 計算・API 搜尋・AI 拍照識圖</div>
+    </header>
+
+    <!-- 分頁導覽 -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" id="tab-btn-today" onclick="switchTab('today')">📥 今日飲食</button>
+      <button class="tab-btn" id="tab-btn-calc" onclick="switchTab('calc')">🧮 BMR / TDEE</button>
+      <button class="tab-btn" id="tab-btn-history" onclick="switchTab('history')">📊 趨勢與備份</button>
+      <button class="tab-btn" id="tab-btn-guide" onclick="switchTab('guide')">📖 使用指南</button>
+    </div>
+
+    <!-- TAB 1: 今日飲食與三大營養素追蹤 -->
+    <div id="tab-today" class="tab-content active">
+      <div class="card">
+        <div class="date-banner">
+          <span>📅 今天日期</span>
+          <span id="current-date-display">--</span>
+        </div>
+
+        <!-- 總熱量進度 -->
+        <div class="progress-box">
+          <div class="total-calories"><span id="total-cal">0</span> <span class="unit">/ <span id="goal-cal-display">2000</span> kcal</span></div>
+          <div class="sub-text" id="status-text">仲可以食 2000 kcal</div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progress-fill"></div>
+          </div>
+        </div>
+
+        <!-- 三大營養素追蹤列 (Macronutrients) -->
+        <div class="macro-summary">
+          <div class="macro-item">
+            <div class="macro-header">
+              <span>🥩 蛋白質 (P)</span>
+              <span><strong id="total-p">0</strong> / <span id="target-p">125</span>g</span>
+            </div>
+            <div class="macro-bar-bg"><div class="macro-bar-fill p-fill" id="fill-p"></div></div>
+          </div>
+          <div class="macro-item">
+            <div class="macro-header">
+              <span>🍚 碳水化合物 (C)</span>
+              <span><strong id="total-c">0</strong> / <span id="target-c">250</span>g</span>
+            </div>
+            <div class="macro-bar-bg"><div class="macro-bar-fill c-fill" id="fill-c"></div></div>
+          </div>
+          <div class="macro-item">
+            <div class="macro-header">
+              <span>🥑 脂肪 (F)</span>
+              <span><strong id="total-f">0</strong> / <span id="target-f">56</span>g</span>
+            </div>
+            <div class="macro-bar-bg"><div class="macro-bar-fill f-fill" id="fill-f"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 新增食物與快速工具區塊 -->
+      <div class="card">
+        <div class="card-title">➕ 新增飲食紀錄</div>
+        <div class="form-group">
+          <div class="form-row">
+            <select id="food-meal" style="flex: 1.2;">
+              <option value="breakfast">🌅 早餐</option>
+              <option value="lunch" selected>☀️ 午餐</option>
+              <option value="dinner">🌙 晚餐</option>
+              <option value="snack">🍿 小食 / 飲品</option>
+            </select>
+            <input type="text" id="food-name" style="flex: 2.5;" placeholder="食物名稱 (例: 雞胸肉便當)">
+          </div>
+          <div class="form-row" style="margin-top: 8px;">
+            <input type="number" id="food-cal" placeholder="熱量 (kcal)" min="0">
+            <input type="number" id="food-p" placeholder="蛋 (g)" min="0">
+            <input type="number" id="food-c" placeholder="碳 (g)" min="0">
+            <input type="number" id="food-f" placeholder="脂 (g)" min="0">
+          </div>
+          <button class="btn-primary" id="add-btn" style="margin-top: 8px;">加入飲食清單</button>
+        </div>
+
+        <!-- 便利工具：複製餐點與存為食譜 -->
+        <div class="form-row" style="margin-top: 10px;">
+          <button class="btn-secondary" style="flex: 1;" onclick="copyYesterdayMeal()">🔄 複製昨日同餐次</button>
+          <button class="btn-secondary" style="flex: 1;" onclick="saveCurrentMealAsRecipe()">⭐ 存為常用食譜</button>
+        </div>
+
+        <!-- Open Food Facts API 搜尋區塊 -->
+        <div class="form-group" style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+          <label>🔍 Open Food Facts 食品資料庫 / 條碼搜尋</label>
+          <div class="form-row" style="margin-top: 4px;">
+            <input type="text" id="off-search-input" placeholder="輸入食物名稱或條碼 (例如: 737628064502)">
+            <button class="btn-secondary" onclick="searchFoodAPI()">搜尋</button>
+          </div>
+          <div id="api-search-results"></div>
+        </div>
+
+        <!-- Gemini AI 拍照識圖區塊 -->
+        <div class="ai-box">
+          <label>🤖 Gemini AI 拍照識圖估算</label>
+          <div class="form-row" style="margin-top: 4px;">
+            <input type="password" id="gemini-api-key" placeholder="貼上 Gemini API Key" style="flex: 1.5;">
+            <input type="file" id="ai-photo-input" accept="image/*" style="display: none;" onchange="handleAIPhotoUpload(event)">
+            <button class="btn-secondary" style="flex: 1;" onclick="triggerAIUpload()">📸 分析照片</button>
+          </div>
+          <div id="ai-status" class="muted-text" style="margin-top: 4px; font-size: 0.75rem;"></div>
+        </div>
+
+        <!-- 快捷標籤與自訂食譜 -->
+        <div style="margin-top: 12px;">
+          <div class="tag-title">⚡ 快捷標籤與自訂食譜（點擊帶入）：</div>
+          <div class="quick-tags" id="quick-tags-container">
+            <span class="tag" onclick="quickAdd('breakfast', '煎蛋鮮奶吐司', 350, 15, 35, 16)">煎蛋吐司 350k</span>
+            <span class="tag" onclick="quickAdd('lunch', '雞胸肉便當', 550, 40, 60, 12)">雞胸便當 550k</span>
+            <span class="tag" onclick="quickAdd('snack', '美式黑咖啡', 15, 1, 2, 0)">黑咖啡 15k</span>
+            <span class="tag" onclick="quickAdd('snack', '乳清蛋白粉 (1勺)', 120, 24, 3, 2)">蛋白粉 120k</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 分餐次顯示清單 -->
+      <div class="card">
+        <div class="list-header">
+          <span>📋 今日餐次結構</span>
+          <span class="muted-text" id="item-count">0 項紀錄</span>
+        </div>
+
+        <div id="meal-sections-container"></div>
+
+        <div class="card-footer">
+          <button class="btn-secondary" onclick="archiveTodayManual()">💾 歸檔今日</button>
+          <button class="btn-outline-danger" onclick="clearTodayList()">清空今日</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: BMR/TDEE/三大營養素計算器 -->
+    <div id="tab-calc" class="tab-content">
+      <div class="card">
+        <div class="card-title">🧮 BMR & TDEE 自動計算器</div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>性別</label>
+            <select id="calc-gender">
+              <option value="male">男</option>
+              <option value="female">女</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>年齡</label>
+            <input type="number" id="calc-age" placeholder="25" min="10" max="100">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>身高 (cm)</label>
+            <input type="number" id="calc-height" placeholder="170" min="100" max="230">
+          </div>
+          <div class="form-group">
+            <label>體重 (kg)</label>
+            <input type="number" id="calc-weight" placeholder="65" min="30" max="200">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>每週活動量</label>
+          <select id="calc-activity">
+            <option value="1.2">久坐 / 辦公室工作（少運動）</option>
+            <option value="1.375">輕度運動（每週 1-3 天）</option>
+            <option value="1.55" selected>中度運動（每週 3-5 天）</option>
+            <option value="1.725">高度運動（每週 6-7 天）</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>個人目標</label>
+          <select id="calc-goal">
+            <option value="0.85">溫和減脂 (赤字 -15%)</option>
+            <option value="0.80">積極減脂 (赤字 -20%)</option>
+            <option value="1.0" selected>維持體重</option>
+            <option value="1.10">溫和增肌 (盈餘 +10%)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>飲食比例 (三大營養素)</label>
+          <select id="calc-diet">
+            <option value="balanced">均衡飲食 (蛋白 25% / 碳水 50% / 脂肪 25%)</option>
+            <option value="high_protein">高蛋白增肌 (蛋白 35% / 碳水 40% / 脂肪 25%)</option>
+            <option value="low_carb">低碳減脂 (蛋白 30% / 碳水 25% / 脂肪 45%)</option>
+          </select>
+        </div>
+
+        <button class="btn-primary" onclick="calculateMetrics()">計算並預覽目標</button>
+      </div>
+
+      <!-- 計算結果 -->
+      <div class="card" id="calc-result-card" style="display: none;">
+        <div class="card-title highlight-text">📊 計算結果與建議</div>
+        <div class="result-details">
+          <div>基礎代謝率 (BMR): <strong id="res-bmr">0</strong> kcal</div>
+          <div>每日總消耗 (TDEE): <strong id="res-tdee">0</strong> kcal</div>
+          <div class="target-summary">建議每日目標: <span id="res-target">0</span> kcal</div>
+        </div>
+
+        <div class="macro-label">🥗 建議每日三大營養素配額：</div>
+        <div class="macro-grid">
+          <div class="macro-card">
+            <div class="macro-title">蛋白質 (P)</div>
+            <div class="macro-val" id="res-protein">0g</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-title">碳水化合物 (C)</div>
+            <div class="macro-val" id="res-carbs">0g</div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-title">脂肪 (F)</div>
+            <div class="macro-val" id="res-fat">0g</div>
+          </div>
+        </div>
+
+        <button class="btn-info" onclick="applyCalculatedGoal()">🎯 自動同步熱量與三大營養素目標至今日</button>
+      </div>
+    </div>
+
+    <!-- TAB 3: 7日趨勢圖、歷史紀錄與備份 -->
+    <div id="tab-history" class="tab-content">
+      <div class="card">
+        <div class="card-title">📈 近 7 日熱量趨勢圖</div>
+        <div class="chart-wrapper">
+          <canvas id="trend-chart" width="450" height="200"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-val" id="stat-days">0</div>
+            <div class="stat-lbl">追蹤天數</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="stat-avg">0</div>
+            <div class="stat-lbl">平均卡路里</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="stat-rate">0%</div>
+            <div class="stat-lbl">達標率</div>
+          </div>
+        </div>
+
+        <div class="list-header">
+          <span>📜 過往紀錄</span>
+          <button class="btn-outline-danger" style="font-size:0.75rem;" onclick="clearAllHistory()">清空全部</button>
+        </div>
+
+        <div class="history-list" id="history-list">
+          <div class="empty-state">尚無歷史紀錄。</div>
+        </div>
+
+        <!-- 匯出 / 匯入 / CSV 資料備份 -->
+        <div class="backup-box">
+          <div class="backup-title">📦 資料備份與匯出 (Export / Import)</div>
+          <div class="form-row">
+            <button class="btn-secondary" style="flex:1;" onclick="exportDataJSON()">📤 匯出 JSON</button>
+            <button class="btn-secondary" style="flex:1;" onclick="exportDataCSV()">📊 匯出 CSV</button>
+          </div>
+          <div class="file-input-wrapper">
+            <input type="file" id="import-file-input" accept=".json" style="display: none;" onchange="importDataJSON(event)">
+            <button class="btn-secondary" style="width: 100%;" onclick="document.getElementById('import-file-input').click()">📥 讀取 JSON 備份檔匯入</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: 使用指南與說明書 -->
+    <div id="tab-guide" class="tab-content">
+      <div class="card">
+        <div class="card-title highlight-text">📖 網頁使用說明與功能簡介</div>
+        <p class="muted-text" style="margin-bottom: 15px; line-height: 1.5;">
+          歡迎使用卡路里與三大營養素精算 Pro！本系統支援離線紀錄、AI 智能辨識與資料備份，以下為各功能的操作步驟：
+        </p>
+
+        <div class="meal-group">
+          <div class="meal-group-header">1. 📥 今日飲食與三大營養素追蹤</div>
+          <div style="padding: 12px; font-size: 0.85rem; line-height: 1.6;">
+            <ul>
+              <li><strong>新增食物：</strong> 選擇餐次（早餐/午餐/晚餐/小食），輸入食物名稱、熱量（kcal）及三大營養素（蛋白質、碳水、脂肪）後點擊「加入飲食清單」。</li>
+              <li><strong>快捷標籤與常用食譜：</strong> 點擊預設標籤可快速帶入常用食物；你亦可將當前餐次儲存為「⭐ 常用食譜」。</li>
+              <li><strong>複製昨日餐點：</strong> 點擊「🔄 複製昨日同餐次」，系統會自動將昨日同一餐次的食物複製到今天。</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="meal-group">
+          <div class="meal-group-header">2. 🔍 API 資料庫與 Gemini AI 拍照識圖</div>
+          <div style="padding: 12px; font-size: 0.85rem; line-height: 1.6;">
+            <ul>
+              <li><strong>條碼 / 關鍵字搜尋：</strong> 輸入食品名稱或包裝條碼（例如 737628064502），系統會透過 Open Food Facts API 自動帶入每 100g 的營養數據。</li>
+              <li><strong>AI 拍照辨識：</strong> 輸入你的 Google Gemini API Key，點擊「📸 分析照片」上傳食物相片，AI 會自動預估食物名稱與卡路里。</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="meal-group">
+          <div class="meal-group-header">3. 🧮 BMR & TDEE 計算器</div>
+          <div style="padding: 12px; font-size: 0.85rem; line-height: 1.6;">
+            <ul>
+              <li><strong>目標設定：</strong> 輸入性別、年齡、身高、體重與每週活動量，選擇「減脂 / 增肌 / 維持」目標及飲食比例。</li>
+              <li><strong>一鍵同步：</strong> 計算出建議每日熱量與三大營養素配額後，點擊「🎯 自動同步熱量與三大營養素目標至今日」，系統會即時更新你的每日目標。</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="meal-group">
+          <div class="meal-group-header">4. 📊 趨勢圖表與資料備份 (JSON / CSV)</div>
+          <div style="padding: 12px; font-size: 0.85rem; line-height: 1.6;">
+            <ul>
+              <li><strong>7 日趨勢圖：</strong> Canvas 圖表會自動繪製近 7 天的熱量攝取曲線與目標橙線對比。</li>
+              <li><strong>資料歸檔：</strong> 每日過後系統會自動歸檔紀錄；你亦可以點擊「💾 歸檔今日」手動儲存。</li>
+              <li><strong>匯出與匯入：</strong> 支援將所有數據匯出為 <code>.json</code> 備份檔，或匯出 <code>.csv</code> 格式供 Excel 開啟；換裝置時只需讀取 JSON 檔即可完整還原資料。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
